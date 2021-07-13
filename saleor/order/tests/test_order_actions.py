@@ -95,7 +95,7 @@ def test_handle_fully_paid_order_digital_lines(
 
     mock_send_payment_confirmation.assert_called_once_with(order, manager)
     send_fulfillment_confirmation_to_customer.assert_called_once_with(
-        order, fulfillment, user=order.user, manager=manager
+        order, fulfillment, user=order.user, app=None, manager=manager
     )
 
     order.refresh_from_db()
@@ -229,11 +229,13 @@ def test_cancel_order(
         order_line__order=order, quantity_allocated__gt=0
     ).exists()
 
-    send_order_canceled_confirmation_mock.assert_called_once_with(order, None, manager)
+    send_order_canceled_confirmation_mock.assert_called_once_with(
+        order, None, None, manager
+    )
 
 
 @patch("saleor.order.actions.send_order_refunded_confirmation")
-def test_order_refunded(
+def test_order_refunded_by_user(
     send_order_refunded_confirmation_mock,
     order,
     checkout_with_item,
@@ -254,7 +256,33 @@ def test_order_refunded(
     assert order_event.type == OrderEvents.PAYMENT_REFUNDED
 
     send_order_refunded_confirmation_mock.assert_called_once_with(
-        order, order.user, amount, payment.currency, manager
+        order, order.user, None, amount, payment.currency, manager
+    )
+
+
+@patch("saleor.order.actions.send_order_refunded_confirmation")
+def test_order_refunded_by_app(
+    send_order_refunded_confirmation_mock,
+    order,
+    checkout_with_item,
+    app,
+):
+    # given
+    payment = Payment.objects.create(
+        gateway="mirumee.payments.dummy", is_active=True, checkout=checkout_with_item
+    )
+    amount = order.total.gross.amount
+
+    # when
+    manager = get_plugins_manager()
+    order_refunded(order, None, app, amount, payment, manager)
+
+    # then
+    order_event = order.events.last()
+    assert order_event.type == OrderEvents.PAYMENT_REFUNDED
+
+    send_order_refunded_confirmation_mock.assert_called_once_with(
+        order, None, app, amount, payment.currency, manager
     )
 
 
