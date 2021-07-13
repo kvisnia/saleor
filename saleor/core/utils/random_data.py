@@ -519,7 +519,6 @@ def create_fake_user(save=True):
         first_name=address.first_name,
         last_name=address.last_name,
         email=email,
-        password="password",
         default_billing_address=address,
         default_shipping_address=address,
         is_active=True,
@@ -528,6 +527,7 @@ def create_fake_user(save=True):
     )
 
     if save:
+        user.set_password(settings.POPULATE_USER_PASSWORD)
         user.save()
         user.addresses.add(address)
     return user
@@ -813,7 +813,7 @@ def _create_staff_user(email=None, superuser=False):
         first_name=first_name,
         last_name=last_name,
         email=email,
-        password=DUMMY_STAFF_PASSWORD,
+        password=settings.POPULATE_STAFF_USER_PASSWORD,
         default_billing_address=address,
         default_shipping_address=address,
         is_staff=True,
